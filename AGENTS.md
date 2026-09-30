@@ -47,6 +47,40 @@ bd export --all -o ~/bd-backups/<project>-$(date +%F).jsonl
 
 Git commits still work normally — this section is only about bead/Dolt data.
 
+## Required release steps when merging `dev` into `main`
+
+A user request to merge `dev` into `main` includes authorization to prepare and
+commit the release changes below, merge, and push both branches to `origin` at
+`https://github.com/n3224461-hash/bead-me-up-scotty.git`. Prepare the release before
+merging and push after merging, without asking for separate confirmation for each
+step. This project-owned rule takes precedence over the conservative commit and
+push defaults in the generated Beads blocks. Explicit user instructions to avoid
+committing or pushing still take precedence.
+
+1. **Bump the version** in `package.json` and the root package entries in
+   `package-lock.json`. Choose the appropriate semantic version for the changes
+   being merged. If `dev` already contains a prepared release version newer than
+   `main`, use that version rather than bumping it a second time.
+2. **Update `CHANGELOG.md`** with the version, release date, and concrete changes
+   since the previous release, including relevant fixes and compatibility changes.
+3. **Write release notes** in `docs/releases/v<version>.md`: describe the resulting
+   behavior, setup or upgrade steps, limitations, and actual validation results.
+   Update the current-version and release-notes links in `README.md`.
+4. **Validate and commit** the implementation and release files on `dev` before
+   merging. Run the applicable project checks; do not claim checks that were not
+   run. Keep `.beads/` and local runtime data out of every commit.
+5. **Merge into `main` and verify** that the version, changelog, release notes,
+   and intended commits are present.
+6. **Push `dev` and `main` to `origin`** after checking the destination and remote
+   branch state. Use ordinary pushes, never force-push as part of this workflow.
+   Keep all `.beads/` data local; never push Dolt data or remotes. Verify that both
+   remote branch tips match the intended local commits before reporting success.
+   If a push fails, report the command and error instead of claiming completion.
+7. **Report completion** with the version, commits, validation, merge result,
+   and push result, including a link to the repository or relevant commit.
+
+Release tags and publication of a hosted release require an explicit user request.
+
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:6cd5cc61 -->
 ## Beads Issue Tracker
 
