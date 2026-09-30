@@ -20,8 +20,12 @@ function annotate(p: ProjectEntry | DemoProject) {
 }
 
 export async function GET() {
-  const projects = [DEMO_PROJECT, ...listProjects()].map(annotate);
-  return ok({ projects });
+  try {
+    const projects = [DEMO_PROJECT, ...listProjects()].map(annotate);
+    return ok({ projects, registryManaged: !!process.env.SCOTTY_PROJECTS_FILE });
+  } catch (error) {
+    return fail(error);
+  }
 }
 
 const addSchema = z.object({ path: z.string().min(1) });

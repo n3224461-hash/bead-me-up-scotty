@@ -28,9 +28,13 @@ import {
   BOARD_COLUMNS as COLUMNS,
   sortBoardCards,
   type BoardSortMode,
+  type BoardColumn,
 } from "@/lib/board-columns";
 import { BeadCardOverlay } from "./bead-card";
 import { Column } from "./column";
+import { MultiSelectFilter } from "@/components/multi-select-filter";
+import { toggleStr, emptyFilters, writeFiltersToSearchParams } from "@/lib/filters";
+import type { ProjectInfo } from "@/lib/api-client";
 import type { Bead } from "@/lib/schema";
 
 // Whatever is under the pointer wins. pointerWithin sorts its hits by the average distance
@@ -43,16 +47,28 @@ const pointerFirstCollision: CollisionDetection = (args) => {
   return underPointer.length > 0 ? underPointer : closestCorners(args);
 };
 
-export function Board() {
-  const { beads, index, humanAllowlist, openCreate, loading, projectId, readOnly } = useApp();
+const WORKSPACE_COLUMNS: BoardColumn[] = [...COLUMNS, {
+  id: "other", name: "Other", color: "#64748b", cmd: "", droppable: false,
+  test: (bead, blocked) => !COLUMNS.some((column) => column.test(bead, blocked)),
+}];
+
+export function Board({ projects }: { projects?: ProjectInfo[] }) {
+  const { beads, index, humanAllowlist, openCreate, loading, projectId, readOnly, beadSources } = useApp();
+  const boardColumns = projects ? WORKSPACE_COLUMNS : COLUMNS;
   const setStatus = useSetStatus();
-  const { data: orderData } = useOrder(projectId);
+  const { data: orderData } = useOrder(projectId, !projects);
   const setOrder = useSetOrder(projectId);
   const { prefs: boardPrefs, setPrefs: setBoardPrefs } = useBoardPrefs();
   const orders = React.useMemo(() => orderData?.orders ?? {}, [orderData]);
   const { filters, setFilters, showArchived, setShowArchived, clearFilters } =
     useUrlFilters();
   const { searchParams, updateUrl } = useUrlState();
+  const selectedProjects = React.useMemo(() => searchParams.getAll("project"), [searchParams]);
+  const setProjects = (ids: string[]) => updateUrl((params) => {
+    params.delete("project");
+    ids.forEach((id) => params.append("project", id));
+  });
+  const sortMode = projects && boardPrefs.sortMode === "manual" ? "priority" : boardPrefs.sortMode;
   // Derived from ALL beads (not the filtered set) so selecting one label
   // doesn't make the remaining options vanish from the dropdown.
   const labelOptions = React.useMemo(() => labelOptionsFrom(beads), [beads]);
@@ -88,17 +104,19 @@ export function Board() {
 
   const matchFilters = React.useCallback(
     (b: Bead) => {
-      if (b.issue_type === "epic") return false;
+      if (!projects && b.issue_type === "epic") return false;
+      const source = beadSources?.get(b.id);
+      if (projects && selectedProjects.length && (!source || !selectedProjects.includes(source.projectId))) return false;
       if (!showArchived && (b.labels ?? []).includes("archived")) return false;
-      return matchesFilters(b, filters, humanAllowlist);
+      return matchesFilters(source ? { ...b, id: source.beadId } : b, filters, humanAllowlist);
     },
-    [filters, showArchived, humanAllowlist],
+    [filters, showArchived, humanAllowlist, projects, beadSources, selectedProjects],
   );
 
   const visible = React.useMemo(() => beads.filter(matchFilters), [beads, matchFilters]);
   const columns = React.useMemo(
     () =>
-      COLUMNS.map((c) => {
+      boardColumns.map((c) => {
         let cards = visible.filter((b) => c.test(b, isBlocked(b, index)));
         // Done column: optionally keep only beads closed within the chosen window.
         if (c.id === "done" && doneWindow !== null) {
@@ -110,10 +128,10 @@ export function Board() {
         }
         return {
           col: c,
-          cards: sortBoardCards(cards, boardPrefs.sortMode, orders[c.id]),
+          cards: sortBoardCards(cards, sortMode, orders[c.id]),
         };
       }),
-    [visible, index, orders, boardPrefs.sortMode, doneWindow, now],
+    [visible, index, orders, sortMode, doneWindow, now, boardColumns],
   );
 
   // Hide the Blocked column when it's empty, unless the user pinned it to always
@@ -123,7 +141,8 @@ export function Board() {
     () =>
       columns.filter(
         ({ col, cards }) =>
-          col.id !== "blocked" || cards.length > 0 || boardPrefs.blockedColumn === "always",
+          (col.id !== "other" || cards.length > 0) &&
+          (col.id !== "blocked" || cards.length > 0 || boardPrefs.blockedColumn === "always"),
       ),
     [columns, boardPrefs.blockedColumn],
   );
@@ -197,13 +216,20 @@ export function Board() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <header className="flex flex-shrink-0 items-center gap-3 border-b border-border bg-[var(--surface)] p-[14px_22px]">
+      <header className="flex flex-shrink-0 flex-wrap items-center gap-3 border-b border-border bg-[var(--surface)] p-[14px_22px]">
         <div className="mr-1 flex flex-col gap-px">
-          <h1 className="m-0 text-base font-[650] tracking-[-.01em]">Board</h1>
+          <h1 className="m-0 text-base font-[650] tracking-[-.01em]">{projects ? "All projects · Board" : "Board"}</h1>
           <span className="text-[11.5px] text-[var(--text-3)]">
-            {visible.length} beads · live from <span className="font-mono">bd list</span>
+            {visible.length} beads · {loading ? "Loading…" : "Beads CLI"}
           </span>
         </div>
+
+        {projects && <MultiSelectFilter label="Project"
+          options={projects.map((p) => ({ value: p.id, label: p.name }))}
+          selected={selectedProjects}
+          onToggle={(id) => setProjects(toggleStr(selectedProjects, id))}
+          onClear={() => setProjects([])}
+        />}
 
         <FilterBar
           filters={filters}
@@ -212,13 +238,19 @@ export function Board() {
           assigneeOptions={assigneeOptions}
           showArchived={showArchived}
           onShowArchived={setShowArchived}
-          onClearAllAction={clearFilters}
+          includeEpics={!!projects}
+          extraActive={projects && selectedProjects.length ? 1 : 0}
+          onClearAllAction={projects ? () => updateUrl((params) => {
+            writeFiltersToSearchParams(params, emptyFilters);
+            params.delete("archived");
+            params.delete("project");
+          }) : clearFilters}
         />
 
         <label
           className="flex h-9 flex-shrink-0 items-center gap-[7px] rounded-[9px] border border-border bg-[var(--surface-2)] px-[10px] text-[12.5px] text-[var(--text-2)]"
           title={
-            boardPrefs.sortMode === "manual"
+            sortMode === "manual"
               ? "Drag to reorder cards or move them between status columns"
               : "Drag between status columns; choose Manual to reorder within a column"
           }
@@ -226,7 +258,7 @@ export function Board() {
           <span className="font-medium">Sort</span>
           <select
             aria-label="Sort board cards"
-            value={boardPrefs.sortMode}
+            value={sortMode}
             onChange={(e) =>
               setBoardPrefs({
                 ...boardPrefs,
@@ -237,7 +269,7 @@ export function Board() {
           >
             <option value="priority">Priority</option>
             <option value="updated">Recently updated</option>
-            <option value="manual">Manual</option>
+            {!projects && <option value="manual">Manual</option>}
           </select>
         </label>
 
@@ -272,7 +304,7 @@ export function Board() {
                   col={col}
                   cards={cards}
                   childCounts={childCounts}
-                  manualSort={boardPrefs.sortMode === "manual"}
+                  manualSort={sortMode === "manual"}
                   dropTarget={dropColumn?.id === col.id}
                   control={
                     col.id === "done" ? (

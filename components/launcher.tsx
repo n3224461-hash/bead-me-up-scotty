@@ -1,5 +1,6 @@
 "use client";
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -11,7 +12,7 @@ import { FolderBrowserModal } from "@/components/folder-browser-modal";
 import { api, type ProjectInfo } from "@/lib/api-client";
 
 export function Launcher() {
-  const { data, isLoading } = useProjects();
+  const { data, isLoading, error } = useProjects();
   const [addOpen, setAddOpen] = React.useState(false);
   const { mode, toggle } = useTheme();
 
@@ -48,16 +49,23 @@ export function Launcher() {
           <h2 className="text-[13px] font-[650] uppercase tracking-[.03em] text-[var(--text-3)]">
             Projects
           </h2>
-          <button
+          {!data?.registryManaged && <button
             onClick={() => setAddOpen(true)}
             className="flex h-[36px] items-center gap-[7px] rounded-[9px] px-[14px] text-[13px] font-semibold text-white"
             style={{ background: "var(--brand)", boxShadow: "0 2px 8px -2px var(--brand)" }}
           >
             <Plus size={15} />
             Add project
-          </button>
+          </button>}
         </div>
 
+        <Link href="/board" className="mb-5 block rounded-xl border border-border bg-[var(--surface)] p-5 hover:border-[var(--brand)]">
+          <div className="font-semibold">All projects · Board →</div>
+          <div className="mt-1 text-sm text-[var(--text-3)]">Browse tasks across projects and filter them in one place</div>
+        </Link>
+
+        {error && <p role="alert" className="mb-4 text-destructive">{error.message}</p>}
+        {data?.registryManaged && <p className="mb-4 text-sm text-[var(--text-3)]">Projects are managed in the workspace registry.</p>}
         {isLoading ? (
           <div className="flex h-[200px] items-center justify-center text-[var(--text-3)]">
             <Loader2 size={20} className="animate-spin" />
@@ -66,9 +74,9 @@ export function Launcher() {
           <div className="grid grid-cols-[repeat(auto-fill,minmax(248px,1fr))] gap-[14px]">
             {demo && <DemoCard />}
             {real.map((p) => (
-              <ProjectCard key={p.id} project={p} />
+              <ProjectCard key={p.id} project={p} registryManaged={data?.registryManaged} />
             ))}
-            {real.length === 0 && (
+            {real.length === 0 && !data?.registryManaged && (
               <button
                 onClick={() => setAddOpen(true)}
                 className="flex min-h-[112px] flex-col items-center justify-center gap-2 rounded-[13px] border border-dashed border-[var(--border-strong)] p-5 text-[var(--text-3)] hover:border-[var(--brand)] hover:text-[var(--brand)]"
@@ -128,7 +136,7 @@ function DemoCard() {
   );
 }
 
-function ProjectCard({ project }: { project: ProjectInfo }) {
+function ProjectCard({ project, registryManaged }: { project: ProjectInfo; registryManaged?: boolean }) {
   const router = useRouter();
   const qc = useQueryClient();
   const remove = useMutation({
@@ -156,7 +164,7 @@ function ProjectCard({ project }: { project: ProjectInfo }) {
             {project.hasBeads ? "bd repo" : "no .beads found"}
           </div>
         </div>
-        <button
+        {!registryManaged && <button
           title="Remove from list"
           onClick={(e) => {
             e.stopPropagation();
@@ -167,7 +175,7 @@ function ProjectCard({ project }: { project: ProjectInfo }) {
           className="flex h-[26px] w-[26px] flex-shrink-0 items-center justify-center rounded-lg text-[var(--text-3)] opacity-0 transition-opacity hover:bg-[var(--surface-3)] hover:text-[#ef4444] group-hover:opacity-100"
         >
           <Trash2 size={14} />
-        </button>
+        </button>}
       </div>
       <div className="truncate font-mono text-[11px] text-[var(--text-3)]" dir="rtl" title={project.path ?? ""}>
         {project.path}

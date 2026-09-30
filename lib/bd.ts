@@ -40,6 +40,9 @@ async function runBdRaw(
       env: {
         ...process.env,
         BD_JSON_ENVELOPE: "1",
+        // A monorepo can contain several databases. Override an inherited
+        // workspace selection so every command uses this project’s database.
+        BEADS_DIR: path.join(opts.repoPath, ".beads"),
         ...(opts.actor ? { BEADS_ACTOR: opts.actor } : {}),
       },
     });

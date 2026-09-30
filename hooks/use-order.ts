@@ -8,8 +8,9 @@ export const orderKey = (projectId: string) => ["order", projectId] as const;
 
 type Orders = { orders: Record<string, string[]> };
 
-export function useOrder(projectId: string) {
+export function useOrder(projectId: string, enabled = true) {
   return useQuery({
+    enabled,
     queryKey: orderKey(projectId),
     queryFn: () => api.order.get(projectId),
     // Order rarely changes out from under us; the SSE stream covers bead data.

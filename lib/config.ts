@@ -268,16 +268,48 @@ export function saveConfig(
 // ---- project registry ----------------------------------------------------
 
 export function listProjects(): ProjectEntry[] {
-  return getConfig().projects;
+  const registryFile = process.env.SCOTTY_PROJECTS_FILE;
+  if (!registryFile) return getConfig().projects;
+  // WorkPost paths are relative to the vault root, not to конфигурация/.
+  const file = path.resolve(registryFile);
+  const root = process.env.SCOTTY_PROJECTS_ROOT || path.resolve(path.dirname(file), "../..");
+  try {
+    const registry = JSON.parse(fs.readFileSync(file, "utf8"));
+    if (!registry.projects || typeof registry.projects !== "object" || Array.isArray(registry.projects)) {
+      throw new Error("Expected a projects object keyed by project ID");
+    }
+    return Object.entries(registry.projects).map(([id, value]) => {
+      const entry = value as { name?: string; path?: string };
+      if (!id || id === DEMO_PROJECT.id || !entry || typeof entry.path !== "string" || !entry.path) {
+        throw new Error(`Invalid project: ${id}`);
+      }
+      return {
+        id,
+        name: typeof entry.name === "string" && entry.name ? entry.name : id,
+        path: path.resolve(root, entry.path),
+        addedAt: "",
+        lastOpened: "",
+      };
+    });
+  } catch (error) {
+    throw new ConfigError(`Cannot read project registry ${file}: ${(error as Error).message}`, "invalid_registry");
+  }
 }
 
 export function getProject(id: string): ProjectEntry | DemoProject | undefined {
   if (id === DEMO_PROJECT.id) return DEMO_PROJECT;
-  return getConfig().projects.find((p) => p.id === id);
+  return listProjects().find((p) => p.id === id);
+}
+
+function requireLocalRegistry(): void {
+  if (process.env.SCOTTY_PROJECTS_FILE) {
+    throw new ConfigError("Projects are managed in SCOTTY_PROJECTS_FILE. Edit that registry to change the project list.", "external_registry");
+  }
 }
 
 /** Add (or re-touch) a project by folder path. Validates a `.beads` dir exists. */
 export function addProject(inputPath: string): ProjectEntry {
+  requireLocalRegistry();
   const cfg = getConfig();
   const abs = path.resolve(inputPath);
   if (!hasBeads(abs)) {
@@ -296,6 +328,7 @@ export function addProject(inputPath: string): ProjectEntry {
 }
 
 export function removeProject(id: string): void {
+  requireLocalRegistry();
   const cfg = getConfig();
   cfg.projects = cfg.projects.filter((p) => p.id !== id);
   // Drop any saved board ordering for the removed project so it can't orphan.
@@ -317,6 +350,7 @@ export function touchProject(id: string): void {
 }
 
 export function renameProject(id: string, name: string): ProjectEntry | undefined {
+  requireLocalRegistry();
   const cfg = getConfig();
   const p = cfg.projects.find((x) => x.id === id);
   if (!p) return undefined;

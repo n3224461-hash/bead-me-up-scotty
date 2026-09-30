@@ -161,6 +161,37 @@ npm run dev            # http://localhost:3000
 Set the human actor / allowlist, repo path, and theme in **Settings** (stored
 under your OS config dir, not in beads).
 
+### Board across projects
+
+Open **All projects · Board** from the project list, or visit `/board`.
+It combines all registered projects (excluding Demo), including epics. Use the
+existing Board filters together with the **Project** multi-select. Filters are
+stored in the URL. Each card shows its project; opening it takes you to that
+project’s task detail for editing. The overview itself is for browsing and does
+not support dragging or creating tasks. It refreshes every 30 seconds and shows
+individual project errors without hiding available tasks.
+
+For a WorkPost registry, set these variables when starting Scotty:
+
+```bash
+export SCOTTY_PROJECTS_FILE="/path/to/WorkPost/воркспейс/конфигурация/projects.json"
+export SCOTTY_PROJECTS_ROOT="/path/to/WorkPost"
+# Keep your existing BD_BIN compatibility wrapper configuration.
+npm run dev
+```
+
+The registry format is `{ "projects": { "project-id": { "name": "Project",
+"path": "relative/project/path", "beads_prefix": "prefix" } } }`. Paths resolve
+from `SCOTTY_PROJECTS_ROOT`, which defaults to two directories above the registry
+file for WorkPost’s layout. `archived_projects` are excluded. With a registry
+configured, edit the project list in that file; Scotty rereads it on requests and
+refreshes its project list every 30 seconds. Without it, the existing local Scotty
+project list is used.
+
+Tasks are read through Beads CLI from local Dolt, with both the working directory
+and `BEADS_DIR` set to the owning project. Scotty does not read `issues.jsonl` as a
+database. `BD_BIN` is preserved, including wrappers that add `--include-comments`.
+
 ### Focus view
 
 **Focus** is an optional view for current work: In flight, Blocked, and Next up

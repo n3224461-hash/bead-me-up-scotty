@@ -10,6 +10,7 @@ export type { View } from "@/lib/views";
 
 interface AppContextValue {
   projectId: string;
+  beadSources?: Map<string, import("@/lib/workspace-board").BeadSource>;
   beads: Bead[];
   index: Map<string, Bead>;
   meta?: Meta;

@@ -78,7 +78,9 @@ export function BeadCardOverlay({ bead, childCount = 0 }: { bead: Bead; childCou
 }
 
 function BeadCardFace({ bead, childCount, preview = false }: { bead: Bead; childCount: number; preview?: boolean }) {
-  const { index, humanAllowlist } = useApp();
+  const { index, humanAllowlist, beadSources } = useApp();
+  const source = beadSources?.get(bead.id);
+  const displayId = source?.beadId ?? bead.id;
   const o = beadOrigin(bead, humanAllowlist);
   const parent = parentOf(bead, index);
   const blocked = isBlocked(bead, index);
@@ -96,10 +98,10 @@ function BeadCardFace({ bead, childCount, preview = false }: { bead: Bead; child
           title={statusLabel(bead.status)}
         />
         {preview ? (
-          <span className="font-mono text-[11.5px] tracking-[-.01em] text-[var(--text-3)]">{bead.id}</span>
+          <span className="font-mono text-[11.5px] tracking-[-.01em] text-[var(--text-3)]">{displayId}</span>
         ) : (
           <CopyableId
-            id={bead.id}
+            id={displayId}
             className="font-mono text-[11.5px] tracking-[-.01em] text-[var(--text-3)]"
           />
         )}
@@ -107,6 +109,8 @@ function BeadCardFace({ bead, childCount, preview = false }: { bead: Bead; child
         <PriorityChip p={bead.priority} />
         <OriginBadge origin={o} title={originTitle(bead.created_by, o)} />
       </div>
+
+      {source && <div className="truncate text-[11px] font-semibold text-[var(--brand)]" title={source.projectName}>{source.projectName}</div>}
 
       <div className="text-[13.5px] font-[550] leading-[1.35] tracking-[-.006em] text-[var(--text)] [text-wrap:pretty]">
         {bead.title}
@@ -179,7 +183,7 @@ function BeadCardFace({ bead, childCount, preview = false }: { bead: Bead; child
             now that arbitrary subtasks exist. */}
         {parent && (
           <span
-            title={`${parent.id} · ${parent.title}`}
+            title={`${beadSources?.get(parent.id)?.beadId ?? parent.id} · ${parent.title}`}
             className={
               parent.issue_type === "epic"
                 ? "inline-flex max-w-[96px] items-center gap-1 rounded-md bg-[var(--brand-weak)] px-[6px] py-px text-[10.5px] font-[550] text-[var(--brand)]"

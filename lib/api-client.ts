@@ -82,6 +82,7 @@ export interface ProjectInfo {
   hasBeads: boolean;
 }
 export interface ProjectsResponse {
+  registryManaged?: boolean;
   projects: ProjectInfo[];
 }
 

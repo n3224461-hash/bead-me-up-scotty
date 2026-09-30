@@ -21,7 +21,11 @@ export function FilterBar({
   showArchived,
   onShowArchived,
   onClearAllAction,
+  includeEpics = false,
+  extraActive = 0,
 }: {
+  includeEpics?: boolean;
+  extraActive?: number;
   filters: Filters;
   onChange: (f: Filters) => void;
   labelOptions: FilterOption[];
@@ -35,6 +39,7 @@ export function FilterBar({
   // Count active filters (each non-empty facet + a non-empty search + archived)
   // so we can offer a one-click reset (bead 3it).
   const active =
+    extraActive +
     (filters.status.length ? 1 : 0) +
     (filters.type.length ? 1 : 0) +
     (filters.priority.length ? 1 : 0) +
@@ -75,7 +80,7 @@ export function FilterBar({
         />
         <MultiSelectFilter
           label="Type"
-          options={BEAD_TYPES.filter((t) => t !== "epic").map((t) => ({ value: t, label: typeLabel(t) }))}
+          options={BEAD_TYPES.filter((t) => includeEpics || t !== "epic").map((t) => ({ value: t, label: typeLabel(t) }))}
           selected={filters.type}
           onToggle={(v) => set({ type: toggleStr(filters.type, v) })}
           onClear={() => set({ type: [] })}

@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "vault": "Scotty Test",
+  "projects": {
+    "atlas": {
+      "name": "Атлас — продукт",
+      "path": "atlas",
+      "beads_prefix": "ta"
+    },
+    "beacon": {
+      "name": "Маяк — маркетинг",
+      "path": "beacon",
+      "beads_prefix": "tb"
+    },
+    "compass": {
+      "name": "Компас — исследования",
+      "path": "compass",
+      "beads_prefix": "tc"
+    }
+  }
+}

@@ -41,18 +41,18 @@ export interface BeadsStore {
 }
 
 // One store per project id. Demo always maps to the shared in-memory store.
-const stores = new Map<string, BeadsStore>();
+const stores = new Map<string, { path: string; store: BeadsStore }>();
 
 export async function getStore(projectId: string): Promise<BeadsStore> {
   if (projectId === DEMO_PROJECT.id) return demoStore;
-
-  const cached = stores.get(projectId);
-  if (cached) return cached;
 
   const project = getProject(projectId);
   if (!project || project.path === null) {
     throw new ConfigError(`Unknown project: ${projectId}`, "unknown_project");
   }
+  const cached = stores.get(projectId);
+  if (cached?.path === project.path) return cached.store;
+
   if (!(await isBdAvailable(project.path))) {
     throw new ConfigError(
       `bd is not available for "${project.name}" (${project.path}). ` +
@@ -61,7 +61,7 @@ export async function getStore(projectId: string): Promise<BeadsStore> {
     );
   }
   const store = createBdStore(project.path);
-  stores.set(projectId, store);
+  stores.set(projectId, { path: project.path, store });
   // First resolution this session — record that the project was opened.
   touchProject(projectId);
   return store;
