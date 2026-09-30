@@ -138,7 +138,8 @@ need a manual restart. Local changes or diverged history must be resolved first.
 Global copies, source downloads, and Docker installations receive the notice with
 manual update instructions. No update is installed automatically.
 
-See [v0.2.0 release notes](docs/releases/v0.2.0.md) for the first versioned release.
+Current source version: **0.4.0 — Board across projects**. See the
+[v0.4.0 release notes](docs/releases/v0.4.0.md) and [changelog](CHANGELOG.md).
 
 ## Run it
 
